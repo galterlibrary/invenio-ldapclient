@@ -9,8 +9,6 @@
 
 from __future__ import absolute_import, print_function
 
-from flask_babelex import gettext as _
-
 from . import config
 from .views import blueprint
 
@@ -20,10 +18,6 @@ class InvenioLDAPClient(object):
 
     def __init__(self, app=None):
         """Extension initialization."""
-        # TODO: This is an example of translation string with comment. Please
-        # remove it.
-        # NOTE: This is a note to a translator.
-        _('A translation string')
         if app:
             self.init_app(app)
 

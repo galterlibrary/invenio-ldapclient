@@ -31,6 +31,7 @@ def test_init():
     assert 'invenio-ldapclient' not in app.extensions
     ext.init_app(app)
     assert 'invenio-ldapclient' in app.extensions
+    assert app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION'] is False
 
 
 def test_view(app):

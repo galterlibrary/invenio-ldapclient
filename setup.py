@@ -59,7 +59,7 @@ setup(
     version=version,
     description=__doc__,
     long_description=readme + '\n\n' + history,
-    keywords='invenio TODO',
+    keywords='invenio authentication LDAP',
     license='MIT',
     author='Galter Health Sciences Library & Learning Center',
     author_email='galter-is@listserv.it.northwestern.edu',
