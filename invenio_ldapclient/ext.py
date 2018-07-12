@@ -42,9 +42,7 @@ class InvenioLDAPClient(object):
 
         #from IPython import embed; embed()
         if app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION']:
-            app.extensions['security'].login_form = (
-                login_form_factory(app.extensions['security'].login_form, app)
-            )
+            app.extensions['security'].login_form = login_form_factory(app)
 
             app.config['SECURITY_LOGIN_USER_TEMPLATE'] = (
                 'invenio_ldapclient/login_user.html'
