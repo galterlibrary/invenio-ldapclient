@@ -20,7 +20,4 @@ def login_form_factory(app):
             validators=[validators.InputRequired()]
         )
 
-        def validate(self):
-            return True
-
     return LoginForm

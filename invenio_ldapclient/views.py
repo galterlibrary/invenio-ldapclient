@@ -6,6 +6,7 @@ from flask import (
     Blueprint,
     redirect,
     after_this_request,
+    render_template,
     current_app as app
 )
 from ldap3 import Server, Connection, ALL, ALL_ATTRIBUTES
@@ -22,7 +23,7 @@ _security = LocalProxy(lambda: app.extensions['security'])
 _datastore = LocalProxy(lambda: _security.datastore)
 
 blueprint = Blueprint(
-    'invenio_unicorn',
+    'invenio_ldapclient',
     __name__,
     template_folder='templates',
     static_folder='static',
@@ -54,6 +55,16 @@ def register_user(entries):
     return user
 
 
+def ldap_login_form():
+    form = login_form_factory(
+        app
+    )()
+    return render_template(
+        app.config['SECURITY_LOGIN_USER_TEMPLATE'],
+        login_user_form=form
+    )
+
+
 @blueprint.route('/ldap-login', methods=['POST'])
 def ldap_login_view():
     form = login_form_factory(
@@ -61,16 +72,15 @@ def ldap_login_view():
     )()
     ldap_user = None
     ldap_pass = None
-    from IPython import embed; embed()
-    raise
-    # FIXME email validator and CSRF token erros
-    # if form.validate_on_submit():
-    ldap_user = "uid={},ou=people,dc=northwestern,dc=edu".format(
-        form.username.data)
-    ldap_pass = form.password.data
+    if form.validate_on_submit():
+        ldap_user = "uid={},ou=people,dc=northwestern,dc=edu".format(
+            form.username.data)
+        ldap_pass = form.password.data
+        server = Server(
+            'registry.northwestern.edu', get_info=ALL, use_ssl=True
+        )
+        conn = Connection(server, ldap_user, ldap_pass)
 
-    server = Server('registry.northwestern.edu', get_info=ALL, use_ssl=True)
-    conn = Connection(server, ldap_user, ldap_pass)
     if ldap_user and ldap_pass and conn.bind():
         conn.search(
             'dc=northwestern,dc=edu',

@@ -11,7 +11,6 @@ from __future__ import absolute_import, print_function
 
 from . import config
 from .views import blueprint
-from .forms import login_form_factory
 
 
 class InvenioLDAPClient(object):
@@ -30,20 +29,23 @@ class InvenioLDAPClient(object):
 
     def init_config(self, app):
         """Initialize configuration."""
-        # Use theme's base template if theme is installed
         if 'BASE_TEMPLATE' in app.config:
             app.config.setdefault(
                 'LDAPCLIENT_BASE_TEMPLATE',
                 app.config['BASE_TEMPLATE'],
             )
+
         for k in dir(config):
             if k.startswith('LDAPCLIENT_'):
                 app.config.setdefault(k, getattr(config, k))
 
-        #from IPython import embed; embed()
         if app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION']:
-            app.extensions['security'].login_form = login_form_factory(app)
+            @app.before_first_request
+            def ldap_login_view_setup():
+                from .views import ldap_login_form
+                app.view_functions['security.login'] = ldap_login_form
 
+            #from IPython import embed; embed()
             app.config['SECURITY_LOGIN_USER_TEMPLATE'] = (
-                'invenio_ldapclient/login_user.html'
+                app.config['LDAPCLIENT_LOGIN_USER_TEMPLATE']
             )
