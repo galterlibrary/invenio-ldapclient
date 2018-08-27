@@ -9,8 +9,6 @@
 
 from __future__ import absolute_import, print_function
 
-from flask_babelex import gettext as _
-
 from . import config
 from .views import blueprint
 
@@ -20,10 +18,6 @@ class InvenioLDAPClient(object):
 
     def __init__(self, app=None):
         """Extension initialization."""
-        # TODO: This is an example of translation string with comment. Please
-        # remove it.
-        # NOTE: This is a note to a translator.
-        _('A translation string')
         if app:
             self.init_app(app)
 
@@ -35,12 +29,23 @@ class InvenioLDAPClient(object):
 
     def init_config(self, app):
         """Initialize configuration."""
-        # Use theme's base template if theme is installed
         if 'BASE_TEMPLATE' in app.config:
             app.config.setdefault(
                 'LDAPCLIENT_BASE_TEMPLATE',
                 app.config['BASE_TEMPLATE'],
             )
+
         for k in dir(config):
             if k.startswith('LDAPCLIENT_'):
                 app.config.setdefault(k, getattr(config, k))
+
+        if app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION']:
+            @app.before_first_request
+            def ldap_login_view_setup():
+                from .views import ldap_login_form
+                app.view_functions['security.login'] = ldap_login_form
+
+            #from IPython import embed; embed()
+            app.config['SECURITY_LOGIN_USER_TEMPLATE'] = (
+                app.config['LDAPCLIENT_LOGIN_USER_TEMPLATE']
+            )

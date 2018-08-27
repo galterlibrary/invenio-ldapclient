@@ -43,6 +43,7 @@ setup_requires = [
 
 install_requires = [
     'Flask-BabelEx>=0.9.2',
+    'ldap3>=2.5',
 ]
 
 packages = find_packages()
@@ -59,7 +60,7 @@ setup(
     version=version,
     description=__doc__,
     long_description=readme + '\n\n' + history,
-    keywords='invenio TODO',
+    keywords='invenio authentication LDAP',
     license='MIT',
     author='Galter Health Sciences Library & Learning Center',
     author_email='galter-is@listserv.it.northwestern.edu',
@@ -74,6 +75,9 @@ setup(
         ],
         'invenio_i18n.translations': [
             'messages = invenio_ldapclient',
+        ],
+        'invenio_base.blueprints': [
+            'invenio_ldapclient = invenio_ldapclient.views:blueprint',
         ],
         # TODO: Edit these entry points to fit your needs.
         # 'invenio_access.actions': [],
