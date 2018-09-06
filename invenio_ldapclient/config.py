@@ -34,8 +34,11 @@ LDAPCLIENT_SERVER_PORT = 389
 LDAPCLIENT_USE_SSL = False
 """Use SSL for LDAP connection."""
 
-LDAPCLIENT_USE_TLS = False
-"""Use TLS for LDAP connection."""
+LDAPCLIENT_TLS = None
+"""TLS options for LDAP connection server."""
+
+LDAPCLIENT_CUSTOM_CONNECTION = None
+"""Custom lambda for ldap3's connection."""
 
 # LDAPCLIENT_ADMIN_ACCOUNT = 'uid=admin,ou=people,dc=example,dc=com'
 """
@@ -67,9 +70,9 @@ LDAPCLIENT_EMAIL_ATTRIBUTE = 'mail'
 LDAPCLIENT_FULL_NAME_ATTRIBUTE = 'displayName'
 """Full name LDAP attribute."""
 
-LDAPCLIENT_SEARCH_ATTRIBUTES = [
-    LDAPCLIENT_USERNAME_ATTRIBUTE,
-    LDAPCLIENT_EMAIL_ATTRIBUTE,
-    LDAPCLIENT_FULL_NAME_ATTRIBUTE
-]
-"""Attributes to fetch from LDAP."""
+#LDAPCLIENT_SEARCH_ATTRIBUTES = [
+#    LDAPCLIENT_USERNAME_ATTRIBUTE,
+#    LDAPCLIENT_EMAIL_ATTRIBUTE,
+#    LDAPCLIENT_FULL_NAME_ATTRIBUTE
+#]
+"""Attributes to fetch from LDAP. Defaults to ALL_ATTRIBUTES."""
