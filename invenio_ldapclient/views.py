@@ -43,7 +43,6 @@ def __register_user(entries):
     _datastore.create_user(**kwargs)
     user = User.query.filter_by(email=email).one_or_none()
 
-    # from IPython import embed; embed()
     # User profile
     profile = UserProfile(user_id=int(user.get_id()))
     profile.full_name = full_name
@@ -101,7 +100,7 @@ def __find_or_register_user(entries, username):
     if user:
         return user
     return UserProfile.query(filter_by(
-        **{ app.config['LDAPCLIENT_USERNAME_ATTRIBUTE']: username }
+        **{app.config['LDAPCLIENT_USERNAME_ATTRIBUTE']: username}
     ))
 
 
@@ -112,7 +111,7 @@ def ldap_login_view():
     conn = __ldap_connection(form)
 
     if conn and conn.bind():
-        search_attribs=ALL_ATTRIBUTES
+        search_attribs = ALL_ATTRIBUTES
         if 'LDAPCLIENT_SEARCH_ATTRIBUTES' in app.config.keys():
             search_attribs = app.config['LDAPCLIENT_SEARCH_ATTRIBUTES']
 
@@ -125,7 +124,7 @@ def ldap_login_view():
             attributes=search_attribs)
 
         __find_or_register_user(conn.entries[0], form.username.data)
-        #from IPython.core.debugger import Pdb; Pdb().set_trace()
+        # from IPython.core.debugger import Pdb; Pdb().set_trace()
         email = conn.entries[0].mail.values[0]
         user = User.query.filter_by(email=email).one_or_none()
 
