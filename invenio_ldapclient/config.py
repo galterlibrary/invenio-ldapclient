@@ -38,7 +38,14 @@ LDAPCLIENT_TLS = None
 """TLS options for LDAP connection server."""
 
 LDAPCLIENT_CUSTOM_CONNECTION = None
-"""Custom lambda for ldap3's connection."""
+"""
+Your own lambda for ldap3's Connection. If you need a custom connections
+pass it as a lambda that takes username and password as the arguments and
+returns initialized connection.
+
+for example:
+    LDAPCLIENT_CUSTOM_CONNECTION = lambda user, pass: Connection(...)
+"""
 
 # LDAPCLIENT_ADMIN_ACCOUNT = 'uid=admin,ou=people,dc=example,dc=com'
 """
@@ -70,9 +77,9 @@ LDAPCLIENT_EMAIL_ATTRIBUTE = 'mail'
 LDAPCLIENT_FULL_NAME_ATTRIBUTE = 'displayName'
 """Full name LDAP attribute."""
 
-LDAPCLIENT_SEARCH_ATTRIBUTES = [
-    LDAPCLIENT_USERNAME_ATTRIBUTE,
-    LDAPCLIENT_EMAIL_ATTRIBUTE,
-    LDAPCLIENT_FULL_NAME_ATTRIBUTE
-]
+# LDAPCLIENT_SEARCH_ATTRIBUTES = [
+#     LDAPCLIENT_USERNAME_ATTRIBUTE,
+#     LDAPCLIENT_EMAIL_ATTRIBUTE,
+#     LDAPCLIENT_FULL_NAME_ATTRIBUTE
+# ]
 """Attributes to fetch from LDAP. Defaults to ALL_ATTRIBUTES."""

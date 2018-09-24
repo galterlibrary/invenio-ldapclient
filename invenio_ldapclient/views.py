@@ -6,7 +6,7 @@ import uuid
 
 from flask import Blueprint, after_this_request
 from flask import current_app as app
-from flask import redirect, render_template
+from flask import flash, redirect, render_template
 from flask_security import login_user
 from invenio_accounts.models import User
 from invenio_db import db
@@ -32,105 +32,118 @@ def _commit(response=None):
     return response
 
 
-def __register_user(entries):
-    email = entries.mail.values[0]
-    username = entries.uid.values[0]
-    full_name = entries.displayName.values[0]
-    password = uuid.uuid4().hex
-
-    # User
-    kwargs = dict(email=email, password=password, active=True)
-    _datastore.create_user(**kwargs)
-    user = User.query.filter_by(email=email).one_or_none()
-
-    # User profile
-    profile = UserProfile(user_id=int(user.get_id()))
-    profile.full_name = full_name
-    profile.username = username
-    db.session.add(profile)
-    return user
-
-
-def __ldap_connection(form):
+def _ldap_connection(form):
+    """Make LDAP connection based on user preferences."""
     if not form.validate_on_submit():
         return False
 
     form_pass = form.password.data
     form_user = form.username.data
-
     if not form_user or not form_pass:
         return False
 
-    ldap_user = "{}={},{}".format(
-        app.config['LDAPCLIENT_USERNAME_ATTRIBUTE'],
-        form_user,
-        app.config['LDAPCLIENT_BIND_BASE']
-    )
+    if app.config['LDAPCLIENT_CUSTOM_CONNECTION']:
+        return app.config['LDAPCLIENT_CUSTOM_CONNECTION'](
+            form_user, form_pass
+        )
 
     ldap_server_kwargs = {
         'port': app.config['LDAPCLIENT_SERVER_PORT'],
         'get_info': ALL,
         'use_ssl': app.config['LDAPCLIENT_USE_SSL']
     }
-
     if app.config['LDAPCLIENT_TLS']:
-        ldap_server_options['tls'] = app.config['LDAPCLIENT_TLS']
-
+        ldap_server_kwargs['tls'] = app.config['LDAPCLIENT_TLS']
     server = Server(
         app.config['LDAPCLIENT_SERVER_HOSTNAME'],
         **ldap_server_kwargs
     )
 
-    if app.config['LDAPCLIENT_CUSTOM_CONNECTION']:
-        return app.config['LDAPCLIENT_CUSTOM_CONNECTION']()
+    ldap_user = "{}={},{}".format(
+        app.config['LDAPCLIENT_USERNAME_ATTRIBUTE'],
+        form_user,
+        app.config['LDAPCLIENT_BIND_BASE']
+    )
+    return Connection(server, ldap_user, form_pass)
+
+
+def _search_ldap(conn, username):
+    """Fetch the user entry from LDAP."""
+    search_attribs = ALL_ATTRIBUTES
+    if 'LDAPCLIENT_SEARCH_ATTRIBUTES' in app.config.keys():
+        search_attribs = app.config['LDAPCLIENT_SEARCH_ATTRIBUTES']
+
+    conn.search(
+        app.config['LDAPCLIENT_SEARCH_BASE'],
+        '({}={})'.format(
+            app.config['LDAPCLIENT_USERNAME_ATTRIBUTE'], username
+        ),
+        attributes=search_attribs)
+
+
+def _register_or_update_user(entries, user_account=None):
+    """Register or update a user."""
+    email = entries[app.config['LDAPCLIENT_EMAIL_ATTRIBUTE']].values[0]
+    username = entries[app.config['LDAPCLIENT_USERNAME_ATTRIBUTE']].values[0]
+    if 'LDAPCLIENT_FULL_NAME_ATTRIBUTE' in app.config.keys():
+        full_name = entries[app.config[
+            'LDAPCLIENT_FULL_NAME_ATTRIBUTE'
+        ]].values[0]
+
+    if user_account is None:
+        kwargs = dict(email=email, active=True, password=uuid.uuid4().hex)
+        _datastore.create_user(**kwargs)
+        user_account = User.query.filter_by(email=email).one_or_none()
+        profile = UserProfile(user_id=int(user_account.get_id()))
     else:
-        return Connection(server, ldap_user, form_pass)
+        user_account.email = email
+        db.session.add(user_account)
+        profile = user_account.profile
+
+    # from IPython.core.debugger import Pdb; Pdb().set_trace()
+    profile.full_name = full_name
+    profile.username = username
+    db.session.add(profile)
+    return user_account
 
 
-def __find_or_register_user(entries, username):
+def _find_or_register_user(conn, username):
+    """Find user by email, username or register a new one."""
+    _search_ldap(conn, username)
+
+    entries = conn.entries[0]
     if not entries:
         return None
-    email = entries[
-        app.config['LDAPCLIENT_EMAIL_ATTRIBUTE']
-    ].values[0]
-    if not email:
+
+    try:
+        email = entries[app.config['LDAPCLIENT_EMAIL_ATTRIBUTE']].values[0]
+        print('HELLO: {}'.format(email))
+    except IndexError:
         # Email is required
         return None
+
+    # Try by email first
     user = User.query.filter_by(email=email).one_or_none()
+    # Try by username next
+    if not user:
+        user = UserProfile.query.filter_by(username=username).one_or_none()
     if user:
+        _register_or_update_user(entries, user_account=user)
         return user
-    return UserProfile.query(filter_by(
-        **{app.config['LDAPCLIENT_USERNAME_ATTRIBUTE']: username}
-    ))
+
+    # Register new user
+    return _register_or_update_user(entries)
 
 
 @blueprint.route('/ldap-login', methods=['POST'])
 def ldap_login_view():
     """Process login request using LDAP and register the user if needed."""
     form = login_form_factory(app)()
-    conn = __ldap_connection(form)
+    conn = _ldap_connection(form)
 
     if conn and conn.bind():
-        search_attribs = ALL_ATTRIBUTES
-        if 'LDAPCLIENT_SEARCH_ATTRIBUTES' in app.config.keys():
-            search_attribs = app.config['LDAPCLIENT_SEARCH_ATTRIBUTES']
-
-        conn.search(
-            app.config['LDAPCLIENT_SEARCH_BASE'],
-            '({}={})'.format(
-                app.config['LDAPCLIENT_USERNAME_ATTRIBUTE'],
-                form.username.data
-            ),
-            attributes=search_attribs)
-
-        __find_or_register_user(conn.entries[0], form.username.data)
-        # from IPython.core.debugger import Pdb; Pdb().set_trace()
-        email = conn.entries[0].mail.values[0]
-        user = User.query.filter_by(email=email).one_or_none()
-
         after_this_request(_commit)
-        if not user:
-            user = __register_user(conn.entries[0])
+        user = _find_or_register_user(conn, form.username.data)
 
         if not login_user(user, remember=False):
             raise ValueError('Could not log user in: {}'.format(
@@ -139,7 +152,7 @@ def ldap_login_view():
         conn.unbind()
         db.session.commit()
     else:
-        print('User NOT authenticated {}'.format(form.username.data))
+        flash("We couldn't log you in, please check your password.")
 
     return redirect(app.config['SECURITY_POST_LOGIN_VIEW'])
 
