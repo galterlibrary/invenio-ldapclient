@@ -196,10 +196,12 @@ def test_view__find_or_register_user(app):
     def filter_by_mock(email):
         assert email == 'itsame@ta.da'
         return Mock(one_or_none=lambda: user)
+
     user_db_mock = Mock(
         query=Mock(
             filter_by=MagicMock(
                 side_effect=filter_by_mock)))
+
     with patch('invenio_ldapclient.views.User', user_db_mock):
         with patch(
             'invenio_ldapclient.views._register_or_update_user'
@@ -216,16 +218,18 @@ def test_view__find_or_register_user(app):
         query=Mock(
             filter_by=MagicMock(
                 side_effect=filter_by_mock2)))
+
     with patch('invenio_ldapclient.views.User', user_db_mock2):
         user2 = Mock()
 
-        def filter_by_up_mock(username):
+        def filter_by_user_profile_mock(username):
             assert username == 'itsame'
             return Mock(one_or_none=lambda: user2)
+
         up_db_mock = Mock(
             query=Mock(
                 filter_by=MagicMock(
-                    side_effect=filter_by_up_mock)))
+                    side_effect=filter_by_user_profile_mock)))
         with patch('invenio_ldapclient.views.UserProfile', up_db_mock):
             with patch(
                 'invenio_ldapclient.views._register_or_update_user'
@@ -235,13 +239,13 @@ def test_view__find_or_register_user(app):
                     conn.entries[0], user_account=user2)
 
         # User is not found, register user
-        def filter_by_up_mock2(username):
+        def filter_by_user_profile_mock2(username):
             assert username == 'itsame'
             return Mock(one_or_none=lambda: None)
         up_db_mock2 = Mock(
             query=Mock(
                 filter_by=MagicMock(
-                    side_effect=filter_by_up_mock2)))
+                    side_effect=filter_by_user_profile_mock2)))
         with patch('invenio_ldapclient.views.UserProfile', up_db_mock2):
             user3 = Mock()
             with patch('invenio_ldapclient.views._register_or_update_user',
@@ -253,7 +257,6 @@ def test_view__search_ldap(app):
     InvenioLDAPClient(app)
     app.config['LDAPCLIENT_SEARCH_BASE'] = 'ou=base,cn=com'
     app.config['LDAPCLIENT_USERNAME_ATTRIBUTE'] = 'userId'
-    # import pytest; pytest.set_trace()
     subject = invenio_ldapclient.views._search_ldap
 
     # LDAPCLIENT_SEARCH_ATTRIBUTES is not set

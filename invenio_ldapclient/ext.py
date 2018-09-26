@@ -45,7 +45,6 @@ class InvenioLDAPClient(object):
                 from .views import ldap_login_form
                 app.view_functions['security.login'] = ldap_login_form
 
-            # from IPython import embed; embed()
             app.config['SECURITY_LOGIN_USER_TEMPLATE'] = (
                 app.config['LDAPCLIENT_LOGIN_USER_TEMPLATE']
             )

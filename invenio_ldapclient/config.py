@@ -25,7 +25,7 @@ LDAPCLIENT_LOGIN_USER_TEMPLATE = 'invenio_ldapclient/login_user.html'
 LDAPCLIENT_USERNAME_PLACEHOLDER = 'Username'
 """Placeholder for the login form username field."""
 
-# LDAPCLIENT_SERVER_HOSTNAME = 'example.com'
+LDAPCLIENT_SERVER_HOSTNAME = 'example.com'
 """LDAP server hostname."""
 
 LDAPCLIENT_SERVER_PORT = 389
@@ -39,27 +39,29 @@ LDAPCLIENT_TLS = None
 
 LDAPCLIENT_CUSTOM_CONNECTION = None
 """
-Your own lambda for ldap3's Connection. If you need a custom connections
-pass it as a lambda that takes username and password as the arguments and
-returns initialized connection.
+Your own lambda for ldap3's Connection. If you need a custom connection
+pass it as a lambda that takes a username and a password as the arguments
+and returns an initialized connection.
 
 for example:
     LDAPCLIENT_CUSTOM_CONNECTION = lambda user, pass: Connection(...)
 """
 
+# TODO later
 # LDAPCLIENT_ADMIN_ACCOUNT = 'uid=admin,ou=people,dc=example,dc=com'
 """
 Admin LDAP account used for searching. If not set the authenticating
 user account will be used.
 """
 
+# TODO later
 # LDAPCLIENT_ADMIN_PASSWORD = 'NOTIT'
 """Admin LDAP account password."""
 
-# LDAPCLIENT_SEARCH_BASE = 'dc=example,dc=com'
+LDAPCLIENT_SEARCH_BASE = 'dc=example,dc=com'
 """Base for binding to LDAP."""
 
-# LDAPCLIENT_BIND_BASE = 'ou=people,dc=example,dc=com'
+LDAPCLIENT_BIND_BASE = 'ou=people,dc=example,dc=com'
 """Base for binding to LDAP."""
 
 LDAPCLIENT_USERNAME_ATTRIBUTE = 'uid'
@@ -77,9 +79,5 @@ LDAPCLIENT_EMAIL_ATTRIBUTE = 'mail'
 LDAPCLIENT_FULL_NAME_ATTRIBUTE = 'displayName'
 """Full name LDAP attribute."""
 
-# LDAPCLIENT_SEARCH_ATTRIBUTES = [
-#     LDAPCLIENT_USERNAME_ATTRIBUTE,
-#     LDAPCLIENT_EMAIL_ATTRIBUTE,
-#     LDAPCLIENT_FULL_NAME_ATTRIBUTE
-# ]
-"""Attributes to fetch from LDAP. Defaults to ALL_ATTRIBUTES."""
+LDAPCLIENT_SEARCH_ATTRIBUTES = None
+"""List of attributes to fetch from LDAP. Defaults to '*'."""

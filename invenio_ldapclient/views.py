@@ -67,13 +67,13 @@ def _ldap_connection(form):
     return Connection(server, ldap_user, form_pass)
 
 
-def _search_ldap(conn, username):
+def _search_ldap(connection, username):
     """Fetch the user entry from LDAP."""
-    search_attribs = ALL_ATTRIBUTES
-    if 'LDAPCLIENT_SEARCH_ATTRIBUTES' in app.config.keys():
-        search_attribs = app.config['LDAPCLIENT_SEARCH_ATTRIBUTES']
+    search_attribs = app.config['LDAPCLIENT_SEARCH_ATTRIBUTES']
+    if search_attribs is None:
+        search_attribs = ALL_ATTRIBUTES
 
-    conn.search(
+    connection.search(
         app.config['LDAPCLIENT_SEARCH_BASE'],
         '({}={})'.format(
             app.config['LDAPCLIENT_USERNAME_ATTRIBUTE'], username
@@ -85,7 +85,7 @@ def _register_or_update_user(entries, user_account=None):
     """Register or update a user."""
     email = entries[app.config['LDAPCLIENT_EMAIL_ATTRIBUTE']].values[0]
     username = entries[app.config['LDAPCLIENT_USERNAME_ATTRIBUTE']].values[0]
-    if 'LDAPCLIENT_FULL_NAME_ATTRIBUTE' in app.config.keys():
+    if 'LDAPCLIENT_FULL_NAME_ATTRIBUTE' in app.config:
         full_name = entries[app.config[
             'LDAPCLIENT_FULL_NAME_ATTRIBUTE'
         ]].values[0]
@@ -100,24 +100,22 @@ def _register_or_update_user(entries, user_account=None):
         db.session.add(user_account)
         profile = user_account.profile
 
-    # from IPython.core.debugger import Pdb; Pdb().set_trace()
     profile.full_name = full_name
     profile.username = username
     db.session.add(profile)
     return user_account
 
 
-def _find_or_register_user(conn, username):
+def _find_or_register_user(connection, username):
     """Find user by email, username or register a new one."""
-    _search_ldap(conn, username)
+    _search_ldap(connection, username)
 
-    entries = conn.entries[0]
+    entries = connection.entries[0]
     if not entries:
         return None
 
     try:
         email = entries[app.config['LDAPCLIENT_EMAIL_ATTRIBUTE']].values[0]
-        print('HELLO: {}'.format(email))
     except IndexError:
         # Email is required
         return None
@@ -139,17 +137,17 @@ def _find_or_register_user(conn, username):
 def ldap_login_view():
     """Process login request using LDAP and register the user if needed."""
     form = login_form_factory(app)()
-    conn = _ldap_connection(form)
+    connection = _ldap_connection(form)
 
-    if conn and conn.bind():
+    if connection and connection.bind():
         after_this_request(_commit)
-        user = _find_or_register_user(conn, form.username.data)
+        user = _find_or_register_user(connection, form.username.data)
 
         if not login_user(user, remember=False):
             raise ValueError('Could not log user in: {}'.format(
                 form.username.data))
 
-        conn.unbind()
+        connection.unbind()
         db.session.commit()
     else:
         flash("We couldn't log you in, please check your password.")
@@ -159,9 +157,7 @@ def ldap_login_view():
 
 def ldap_login_form():
     """Display the LDAP login form."""
-    form = login_form_factory(
-        app
-    )()
+    form = login_form_factory(app)()
     return render_template(
         app.config['SECURITY_LOGIN_USER_TEMPLATE'],
         login_user_form=form
