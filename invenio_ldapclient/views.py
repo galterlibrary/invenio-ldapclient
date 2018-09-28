@@ -143,9 +143,8 @@ def ldap_login_view():
         after_this_request(_commit)
         user = _find_or_register_user(connection, form.username.data)
 
-        if not login_user(user, remember=False):
-            raise ValueError('Could not log user in: {}'.format(
-                form.username.data))
+        if not user or not login_user(user, remember=False):
+            flash("We couldn't log you in, please contact your administrator.")
 
         connection.unbind()
         db.session.commit()
@@ -155,8 +154,10 @@ def ldap_login_view():
     return redirect(app.config['SECURITY_POST_LOGIN_VIEW'])
 
 
+@blueprint.route('/ldap-login', methods=['GET'])
 def ldap_login_form():
     """Display the LDAP login form."""
+    # from IPython import embed; embed()
     form = login_form_factory(app)()
     return render_template(
         app.config['SECURITY_LOGIN_USER_TEMPLATE'],

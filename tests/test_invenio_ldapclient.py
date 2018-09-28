@@ -11,9 +11,10 @@ from __future__ import absolute_import, print_function
 
 from unittest.mock import MagicMock, Mock, patch
 
+import invenio_accounts
 import ldap3
 import pytest
-from flask import Flask
+from flask import Flask, render_template
 from invenio_accounts.models import User
 from invenio_userprofiles.models import UserProfile
 from werkzeug.local import LocalProxy
@@ -63,13 +64,32 @@ def test_init_non_exclusive_LDAP_auth():
     ext.init_app(app)
     assert app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION'] is False
     with pytest.raises(KeyError, message='SECURITY_LOGIN_USER_TEMPLATE'):
-        assert app.config['SECURITY_LOGIN_USER_TEMPLATE'] == \
-            app.config['LDAPCLIENT_LOGIN_USER_TEMPLATE']
+        assert app.config['SECURITY_LOGIN_USER_TEMPLATE']
 
 
 # View tests
+def test_get_ldap_login(app):
+    app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION'] = True
+    app.config['LDAPCLIENT_USERNAME_PLACEHOLDER'] = 'Da User'
+    app.config['COVER_TEMPLATE'] = 'login.html'
+
+    app.jinja_loader.searchpath.append('tests/templates')
+    app.jinja_loader.searchpath.append(
+        invenio_accounts.__path__[0] + '/templates'
+    )
+    app.extensions['security'] = Mock()
+
+    InvenioLDAPClient(app)
+    response = app.test_client().get("/ldap-login")
+
+    assert response.status_code == 200
+    html_text = response.get_data(as_text=True)
+    assert 'placeholder="Da User"' in html_text
+
+
 def test_view_ldap_conn_returns_False(app):
     """Test view when there's something wrong with LDAP connection."""
+    app.extensions['security'] = Mock()
     InvenioLDAPClient(app)
     app.config['SECURITY_POST_LOGIN_VIEW'] = '/abc'
     form = Mock()
@@ -87,6 +107,12 @@ def test_view_ldap_conn_returns_False(app):
             )
     form_factory_mock.assert_called_once_with(app)
     ldap_conn_mock.assert_called_once_with(form)
+
+    assert app.extensions['security'].registerable is False
+    assert app.extensions['security'].recoverable is False
+    assert app.view_functions['security.login'] == \
+        invenio_ldapclient.views.ldap_login_form
+
     assert res.status_code == 302
     assert res.location == 'http://localhost/abc'
 
@@ -95,8 +121,10 @@ def test_view_ldap_conn_returns_False(app):
 @patch('invenio_ldapclient.views.db.session.commit', lambda: True)
 def test_view_ldap_conn_returns_True(app):
     """Test view when LDAP connection is A-OK."""
+    app.extensions['security'] = Mock()
     InvenioLDAPClient(app)
     app.config['SECURITY_POST_LOGIN_VIEW'] = '/abc'
+
     ldap_conn = Mock(bind=lambda: True, unbind=lambda: True)
     user = Mock()
     with patch(
@@ -123,6 +151,12 @@ def test_view_ldap_conn_returns_True(app):
     after_request_mock.assert_called_once_with(
         invenio_ldapclient.views._commit
     )
+
+    assert app.extensions['security'].registerable is False
+    assert app.extensions['security'].recoverable is False
+    assert app.view_functions['security.login'] == \
+        invenio_ldapclient.views.ldap_login_form
+
     assert res.status_code == 302
     assert res.location == 'http://localhost/abc'
 

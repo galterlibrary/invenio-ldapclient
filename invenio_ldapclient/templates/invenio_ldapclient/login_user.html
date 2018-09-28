@@ -6,7 +6,7 @@
   Invenio is free software; you can redistribute it and/or modify it
   under the terms of the MIT License; see LICENSE file for more details.
 #}
-{%- extends config.ACCOUNTS_COVER_TEMPLATE %}
+{%- extends config.LDAPCLIENT_BASE_TEMPLATE %}
 
 {% from "invenio_accounts/_macros.html" import render_field, form_errors %}
 
@@ -29,18 +29,5 @@
       {%- endwith %}
       {%- endblock form_outer %}
     </div>
-    {%- block registerable %}
-    {%- if security.registerable %}
-    <div class="panel-footer text-center">
-        <h4 class="text-muted">{% trans sitename=config.ACCOUNTS_SITENAME %}New to {{sitename}}?{% endtrans %} <a href="{{url_for('security.register')}}">{{_('Sign Up')}}</a></h4>
-    </div>
-    {%- endif %}
-    {%- endblock %}
-  </div>
-  {%- block recoverable %}
-  {%- if security.recoverable %}
-  <a href="{{url_for('security.forgot_password')}}" class="text-muted">{{_('Forgot password?')}}</a>
-  {%- endif %}
-  {%- endblock %}
 </div>
 {% endblock panel %}
