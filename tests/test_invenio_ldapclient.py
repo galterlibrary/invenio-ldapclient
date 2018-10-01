@@ -273,6 +273,8 @@ def test_view__find_or_register_user(app):
                     conn.entries[0], user_account=user2)
 
         # User is not found, register user
+        app.config['LDAPCLIENT_AUTO_REGISTRATION'] = True
+
         def filter_by_user_profile_mock2(username):
             assert username == 'itsame'
             return Mock(one_or_none=lambda: None)
@@ -285,6 +287,24 @@ def test_view__find_or_register_user(app):
             with patch('invenio_ldapclient.views._register_or_update_user',
                        return_value=user3):
                 assert subject(conn, 'itsame') == user3
+
+        # User is not found, register user
+        app.config['LDAPCLIENT_AUTO_REGISTRATION'] = False
+
+        def filter_by_user_profile_mock2(username):
+            assert username == 'itsame'
+            return Mock(one_or_none=lambda: None)
+        up_db_mock2 = Mock(
+            query=Mock(
+                filter_by=MagicMock(
+                    side_effect=filter_by_user_profile_mock2)))
+        with patch('invenio_ldapclient.views.UserProfile', up_db_mock2):
+            user3 = Mock()
+            with patch(
+                'invenio_ldapclient.views._register_or_update_user'
+            ) as register_or_update_patch:
+                assert subject(conn, 'itsame') is None
+                assert register_or_update_patch.called is False
 
 
 def test_view__search_ldap(app):

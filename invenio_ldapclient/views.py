@@ -130,7 +130,8 @@ def _find_or_register_user(connection, username):
         return user
 
     # Register new user
-    return _register_or_update_user(entries)
+    if app.config['LDAPCLIENT_AUTO_REGISTRATION']:
+        return _register_or_update_user(entries)
 
 
 @blueprint.route('/ldap-login', methods=['POST'])
