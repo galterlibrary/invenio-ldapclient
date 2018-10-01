@@ -120,14 +120,18 @@ def _find_or_register_user(connection, username):
         # Email is required
         return None
 
-    # Try by email first
-    user = User.query.filter_by(email=email).one_or_none()
-    # Try by username next
-    if not user:
-        user = UserProfile.query.filter_by(username=username).one_or_none()
+    # Try by username first
+    up = UserProfile.query.filter_by(username=username).one_or_none()
+    user = up.user if up else None
+
+    # Try by email next
+    if not user and app.config['LDAPCLIENT_FIND_BY_EMAIL']:
+        user = User.query.filter_by(email=email).one_or_none()
+
     if user:
-        _register_or_update_user(entries, user_account=user)
-        return user
+        if not user.active:
+            return None
+        return _register_or_update_user(entries, user_account=user)
 
     # Register new user
     if app.config['LDAPCLIENT_AUTO_REGISTRATION']:
@@ -158,7 +162,6 @@ def ldap_login_view():
 @blueprint.route('/ldap-login', methods=['GET'])
 def ldap_login_form():
     """Display the LDAP login form."""
-    # from IPython import embed; embed()
     form = login_form_factory(app)()
     return render_template(
         app.config['SECURITY_LOGIN_USER_TEMPLATE'],

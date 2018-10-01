@@ -108,8 +108,11 @@ def test_view_ldap_conn_returns_False(app):
     form_factory_mock.assert_called_once_with(app)
     ldap_conn_mock.assert_called_once_with(form)
 
-    assert app.extensions['security'].registerable is False
-    assert app.extensions['security'].recoverable is False
+    assert app.config['SECURITY_CONFIRMABLE'] is False
+    assert app.config['SECURITY_RECOVERABLE'] is False
+    assert app.config['SECURITY_REGISTERABLE'] is False
+    assert app.config['SECURITY_CHANGEABLE'] is False
+    assert app.config['USERPROFILES_EMAIL_ENABLED'] is False
     assert app.view_functions['security.login'] == \
         invenio_ldapclient.views.ldap_login_form
 
@@ -152,8 +155,6 @@ def test_view_ldap_conn_returns_True(app):
         invenio_ldapclient.views._commit
     )
 
-    assert app.extensions['security'].registerable is False
-    assert app.extensions['security'].recoverable is False
     assert app.view_functions['security.login'] == \
         invenio_ldapclient.views.ldap_login_form
 
@@ -211,100 +212,170 @@ def test_view__ldap_connection(app):
 
 
 @patch('invenio_ldapclient.views._search_ldap', lambda x, y: None)
-def test_view__find_or_register_user(app):
+def test_view__find_or_register_user_no_email(app):
     InvenioLDAPClient(app)
     app.config['LDAPCLIENT_EMAIL_ATTRIBUTE'] = 'daMail'
     subject = invenio_ldapclient.views._find_or_register_user
-
-    # No email
     conn = Mock(entries=[{'daMail': Mock(values=[])}])
     assert subject(conn, 'itsame') is None
 
-    # User found by email lookup
-    conn = Mock(entries=[
-        {'daMail': Mock(values=['itsame@ta.da'])}
-    ])
 
-    user = Mock()
+@patch('invenio_ldapclient.views._search_ldap', lambda x, y: None)
+def test_view__find_or_register_active_user_found_by_username(app):
+    InvenioLDAPClient(app)
+    subject = invenio_ldapclient.views._find_or_register_user
+    conn = Mock(entries=[{'mail': Mock(values=['itsame@ta.da'])}])
+    user = Mock(active=True)
 
-    def filter_by_mock(email):
+    def filter_by_user_profile_mock(username):
+        assert username == 'itsame'
+        return Mock(one_or_none=lambda: Mock(user=user))
+
+    up_db_mock = Mock(
+        query=Mock(
+            filter_by=MagicMock(
+                side_effect=filter_by_user_profile_mock)))
+    with patch('invenio_ldapclient.views.UserProfile', up_db_mock):
+        with patch(
+            'invenio_ldapclient.views._register_or_update_user',
+            return_value=user
+        ):
+            assert subject(conn, 'itsame') == user
+
+
+@patch('invenio_ldapclient.views._search_ldap', lambda x, y: None)
+def test_view__find_or_register_inactive_user_found_by_username(app):
+    InvenioLDAPClient(app)
+    subject = invenio_ldapclient.views._find_or_register_user
+    conn = Mock(entries=[{'mail': Mock(values=['itsame@ta.da'])}])
+    user = Mock(active=False)
+
+    def filter_by_user_profile_mock(username):
+        assert username == 'itsame'
+        return Mock(one_or_none=lambda: Mock(user=user))
+
+    up_db_mock = Mock(
+        query=Mock(
+            filter_by=MagicMock(
+                side_effect=filter_by_user_profile_mock)))
+    with patch('invenio_ldapclient.views.UserProfile', up_db_mock):
+        with patch(
+            'invenio_ldapclient.views._register_or_update_user',
+            return_value=user
+        ):
+            assert subject(conn, 'itsame') is None
+
+
+@patch('invenio_ldapclient.views._search_ldap', lambda x, y: None)
+def test_view__find_or_register_active_user_found_by_email(app):
+    InvenioLDAPClient(app)
+    subject = invenio_ldapclient.views._find_or_register_user
+    conn = Mock(entries=[{'mail': Mock(values=['itsame@ta.da'])}])
+    user = Mock(active=True)
+
+    def filter_by_user_mock(email):
         assert email == 'itsame@ta.da'
         return Mock(one_or_none=lambda: user)
 
     user_db_mock = Mock(
-        query=Mock(
-            filter_by=MagicMock(
-                side_effect=filter_by_mock)))
+        query=Mock(filter_by=MagicMock(side_effect=filter_by_user_mock))
+    )
 
-    with patch('invenio_ldapclient.views.User', user_db_mock):
+    # UserProfile doesn't return a result
+    up_db_mock = Mock(query=Mock(
+        filter_by=lambda username: Mock(one_or_none=lambda: None)
+    ))
+    with patch('invenio_ldapclient.views.UserProfile', up_db_mock):
         with patch(
-            'invenio_ldapclient.views._register_or_update_user'
-        ) as reg_up_patch:
-            assert subject(conn, 'itsame') == user
-            reg_up_patch.assert_called_once_with(
-                conn.entries[0], user_account=user)
+            'invenio_ldapclient.views._register_or_update_user',
+            return_value=user
+        ):
+            with patch('invenio_ldapclient.views.User', user_db_mock):
+                assert subject(conn, 'itsame') == user
 
-    # User not found by email lookup, found by username
-    def filter_by_mock2(email):
+
+@patch('invenio_ldapclient.views._search_ldap', lambda x, y: None)
+def test_view__find_or_register_inactive_user_found_by_email(app):
+    InvenioLDAPClient(app)
+    subject = invenio_ldapclient.views._find_or_register_user
+    conn = Mock(entries=[{'mail': Mock(values=['itsame@ta.da'])}])
+    user = Mock(active=False)
+
+    def filter_by_user_mock(email):
+        assert email == 'itsame@ta.da'
+        return Mock(one_or_none=lambda: user)
+
+    user_db_mock = Mock(
+        query=Mock(filter_by=MagicMock(side_effect=filter_by_user_mock))
+    )
+
+    # UserProfile doesn't return a result
+    up_db_mock = Mock(query=Mock(
+        filter_by=lambda username: Mock(one_or_none=lambda: None)
+    ))
+    with patch('invenio_ldapclient.views.UserProfile', up_db_mock):
+        with patch(
+            'invenio_ldapclient.views._register_or_update_user',
+            return_value=user
+        ):
+            with patch('invenio_ldapclient.views.User', user_db_mock):
+                assert subject(conn, 'itsame') is None
+
+
+@patch('invenio_ldapclient.views._search_ldap', lambda x, y: None)
+def test_view__find_or_register_not_found_by_username_no_email_filtering(app):
+    app.config['LDAPCLIENT_FIND_BY_EMAIL'] = False
+    InvenioLDAPClient(app)
+    subject = invenio_ldapclient.views._find_or_register_user
+    conn = Mock(entries=[{'mail': Mock(values=['itsame@ta.da'])}])
+    user = Mock(active=True)
+    new_user = Mock()
+
+    def filter_by_user_mock(email):
+        assert email == 'itsame@ta.da'
+        return Mock(one_or_none=lambda: user)
+
+    # User email would return a User instance
+    user_db_mock = Mock(
+        query=Mock(filter_by=MagicMock(side_effect=filter_by_user_mock))
+    )
+
+    # UserProfile doesn't return a result
+    up_db_mock = Mock(query=Mock(
+        filter_by=lambda username: Mock(one_or_none=lambda: None)
+    ))
+    with patch('invenio_ldapclient.views.UserProfile', up_db_mock):
+        with patch(
+            'invenio_ldapclient.views._register_or_update_user',
+            return_value=new_user
+        ):
+            with patch('invenio_ldapclient.views.User', user_db_mock):
+                assert subject(conn, 'itsame') == new_user
+
+
+@patch('invenio_ldapclient.views._search_ldap', lambda x, y: None)
+def test_view__find_or_register_user_not_found_no_auto_registration(app):
+    app.config['LDAPCLIENT_AUTO_REGISTRATION'] = False
+    InvenioLDAPClient(app)
+    subject = invenio_ldapclient.views._find_or_register_user
+    conn = Mock(entries=[{'mail': Mock(values=['itsame@ta.da'])}])
+
+    def filter_by_user_mock(email):
         assert email == 'itsame@ta.da'
         return Mock(one_or_none=lambda: None)
-    user_db_mock2 = Mock(
-        query=Mock(
-            filter_by=MagicMock(
-                side_effect=filter_by_mock2)))
 
-    with patch('invenio_ldapclient.views.User', user_db_mock2):
-        user2 = Mock()
+    # User email would return a User instance
+    user_db_mock = Mock(
+        query=Mock(filter_by=MagicMock(side_effect=filter_by_user_mock))
+    )
 
-        def filter_by_user_profile_mock(username):
-            assert username == 'itsame'
-            return Mock(one_or_none=lambda: user2)
-
-        up_db_mock = Mock(
-            query=Mock(
-                filter_by=MagicMock(
-                    side_effect=filter_by_user_profile_mock)))
-        with patch('invenio_ldapclient.views.UserProfile', up_db_mock):
-            with patch(
-                'invenio_ldapclient.views._register_or_update_user'
-            ) as reg_up_patch:
-                assert subject(conn, 'itsame') == user2
-                reg_up_patch.assert_called_once_with(
-                    conn.entries[0], user_account=user2)
-
-        # User is not found, register user
-        app.config['LDAPCLIENT_AUTO_REGISTRATION'] = True
-
-        def filter_by_user_profile_mock2(username):
-            assert username == 'itsame'
-            return Mock(one_or_none=lambda: None)
-        up_db_mock2 = Mock(
-            query=Mock(
-                filter_by=MagicMock(
-                    side_effect=filter_by_user_profile_mock2)))
-        with patch('invenio_ldapclient.views.UserProfile', up_db_mock2):
-            user3 = Mock()
-            with patch('invenio_ldapclient.views._register_or_update_user',
-                       return_value=user3):
-                assert subject(conn, 'itsame') == user3
-
-        # User is not found, register user
-        app.config['LDAPCLIENT_AUTO_REGISTRATION'] = False
-
-        def filter_by_user_profile_mock2(username):
-            assert username == 'itsame'
-            return Mock(one_or_none=lambda: None)
-        up_db_mock2 = Mock(
-            query=Mock(
-                filter_by=MagicMock(
-                    side_effect=filter_by_user_profile_mock2)))
-        with patch('invenio_ldapclient.views.UserProfile', up_db_mock2):
-            user3 = Mock()
-            with patch(
-                'invenio_ldapclient.views._register_or_update_user'
-            ) as register_or_update_patch:
-                assert subject(conn, 'itsame') is None
-                assert register_or_update_patch.called is False
+    # UserProfile doesn't return a result
+    up_db_mock = Mock(query=Mock(
+        filter_by=lambda username: Mock(one_or_none=lambda: None)
+    ))
+    with patch('invenio_ldapclient.views.UserProfile', up_db_mock):
+        with patch('invenio_ldapclient.views.User', user_db_mock):
+            assert subject(conn, 'itsame') is None
 
 
 def test_view__search_ldap(app):

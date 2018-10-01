@@ -10,6 +10,9 @@
 LDAPCLIENT_AUTHENTICATION = True
 """Use LDAP as an authentication method without overriding the default."""
 
+LDAPCLIENT_FIND_BY_EMAIL = True
+"""Allow looking users up by email if not found by username."""
+
 LDAPCLIENT_AUTO_REGISTRATION = True
 """Automatically register users and populate their attributes from LDAP."""
 
