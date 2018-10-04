@@ -121,8 +121,9 @@ def _find_or_register_user(connection, username):
         return None
 
     # Try by username first
-    up = UserProfile.query.filter_by(username=username).one_or_none()
-    user = up.user if up else None
+    user = User.query.join(UserProfile).filter(
+        UserProfile.username == username
+    ).one_or_none()
 
     # Try by email next
     if not user and app.config['LDAPCLIENT_FIND_BY_EMAIL']:
