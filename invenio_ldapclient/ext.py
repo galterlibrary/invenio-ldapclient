@@ -29,21 +29,29 @@ class InvenioLDAPClient(object):
 
     def init_config(self, app):
         """Initialize configuration."""
-        if 'BASE_TEMPLATE' in app.config:
+        if 'COVER_TEMPLATE' in app.config:
             app.config.setdefault(
                 'LDAPCLIENT_BASE_TEMPLATE',
-                app.config['BASE_TEMPLATE'],
+                app.config['COVER_TEMPLATE'],
             )
 
         for k in dir(config):
             if k.startswith('LDAPCLIENT_'):
                 app.config.setdefault(k, getattr(config, k))
 
+        if not app.config['LDAPCLIENT_AUTHENTICATION']:
+            return
+
         if app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION']:
             @app.before_first_request
             def ldap_login_view_setup():
                 from .views import ldap_login_form
                 app.view_functions['security.login'] = ldap_login_form
+                app.config['SECURITY_CONFIRMABLE'] = False
+                app.config['SECURITY_RECOVERABLE'] = False
+                app.config['SECURITY_REGISTERABLE'] = False
+                app.config['SECURITY_CHANGEABLE'] = False
+                app.config['USERPROFILES_EMAIL_ENABLED'] = False
 
             app.config['SECURITY_LOGIN_USER_TEMPLATE'] = (
                 app.config['LDAPCLIENT_LOGIN_USER_TEMPLATE']

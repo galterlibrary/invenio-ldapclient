@@ -120,17 +120,23 @@ def _find_or_register_user(connection, username):
         # Email is required
         return None
 
-    # Try by email first
-    user = User.query.filter_by(email=email).one_or_none()
-    # Try by username next
-    if not user:
-        user = UserProfile.query.filter_by(username=username).one_or_none()
+    # Try by username first
+    user = User.query.join(UserProfile).filter(
+        UserProfile.username == username
+    ).one_or_none()
+
+    # Try by email next
+    if not user and app.config['LDAPCLIENT_FIND_BY_EMAIL']:
+        user = User.query.filter_by(email=email).one_or_none()
+
     if user:
-        _register_or_update_user(entries, user_account=user)
-        return user
+        if not user.active:
+            return None
+        return _register_or_update_user(entries, user_account=user)
 
     # Register new user
-    return _register_or_update_user(entries)
+    if app.config['LDAPCLIENT_AUTO_REGISTRATION']:
+        return _register_or_update_user(entries)
 
 
 @blueprint.route('/ldap-login', methods=['POST'])
@@ -143,9 +149,8 @@ def ldap_login_view():
         after_this_request(_commit)
         user = _find_or_register_user(connection, form.username.data)
 
-        if not login_user(user, remember=False):
-            raise ValueError('Could not log user in: {}'.format(
-                form.username.data))
+        if not user or not login_user(user, remember=False):
+            flash("We couldn't log you in, please contact your administrator.")
 
         connection.unbind()
         db.session.commit()
@@ -155,6 +160,7 @@ def ldap_login_view():
     return redirect(app.config['SECURITY_POST_LOGIN_VIEW'])
 
 
+@blueprint.route('/ldap-login', methods=['GET'])
 def ldap_login_form():
     """Display the LDAP login form."""
     form = login_form_factory(app)()
