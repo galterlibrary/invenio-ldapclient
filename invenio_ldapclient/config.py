@@ -53,7 +53,7 @@ for example:
 # TODO later
 # LDAPCLIENT_ADMIN_ACCOUNT = 'uid=admin,ou=people,dc=example,dc=com'
 """
-Admin LDAP account used for searching. If not set the authenticating
+Admin LDAP account used for searching. If not set, the authenticating
 user account will be used.
 """
 
@@ -70,7 +70,7 @@ LDAPCLIENT_BIND_BASE = 'ou=people,dc=example,dc=com'
 LDAPCLIENT_USERNAME_ATTRIBUTE = 'uid'
 """
 Username LDAP attribute.
-Appended to `LDAPCLIENT_BIND_BASE` with the username from the log-in form
+Prepended to `LDAPCLIENT_BIND_BASE` with the username from the log-in form
 for binding. For example:
 
     uid=FORM-USERNAME,ou=people,dc=example,dc=com
