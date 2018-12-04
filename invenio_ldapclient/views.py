@@ -33,7 +33,7 @@ def _commit(response=None):
 
 
 def _ldap_connection(form):
-    """Make LDAP connection based on user preferences."""
+    """Make LDAP connection based on configuration."""
     if not form.validate_on_submit():
         return False
 
