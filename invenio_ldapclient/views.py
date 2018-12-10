@@ -139,31 +139,34 @@ def _find_or_register_user(connection, username):
         return _register_or_update_user(entries)
 
 
-@blueprint.route('/ldap-login', methods=['POST'])
-def ldap_login_view():
-    """Process login request using LDAP and register the user if needed."""
+@blueprint.route('/ldap-login', methods=['GET', 'POST'])
+def ldap_login():
+    """
+    LDAP login form view.
+
+    Process login request using LDAP and register
+    the user if needed.
+    """
     form = login_form_factory(app)()
-    connection = _ldap_connection(form)
 
-    if connection and connection.bind():
-        after_this_request(_commit)
-        user = _find_or_register_user(connection, form.username.data)
+    if form.validate_on_submit():
 
-        if not user or not login_user(user, remember=False):
-            flash("We couldn't log you in, please contact your administrator.")
+        connection = _ldap_connection(form)
 
-        connection.unbind()
-        db.session.commit()
-    else:
-        flash("We couldn't log you in, please check your password.")
+        if connection and connection.bind():
+            after_this_request(_commit)
+            user = _find_or_register_user(connection, form.username.data)
 
-    return redirect(app.config['SECURITY_POST_LOGIN_VIEW'])
+            if not user or not login_user(user, remember=False):
+                flash("We couldn't log you in, please contact your administrator.")  # noqa
 
+            connection.unbind()
+            db.session.commit()
+        else:
+            flash("We couldn't log you in, please check your password.")
 
-@blueprint.route('/ldap-login', methods=['GET'])
-def ldap_login_form():
-    """Display the LDAP login form."""
-    form = login_form_factory(app)()
+        return redirect(app.config['SECURITY_POST_LOGIN_VIEW'])
+
     return render_template(
         app.config['SECURITY_LOGIN_USER_TEMPLATE'],
         login_user_form=form
