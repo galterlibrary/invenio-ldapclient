@@ -29,7 +29,7 @@ LDAPCLIENT_USERNAME_PLACEHOLDER = 'Username'
 """Placeholder for the login form username field."""
 
 LDAPCLIENT_SERVER_HOSTNAME = 'example.com'
-"""LDAP server hostname."""
+"""LDAP server hostname. Your application needs to override this."""
 
 LDAPCLIENT_SERVER_PORT = 389
 """LDAP server port."""
@@ -53,7 +53,7 @@ for example:
 # TODO later
 # LDAPCLIENT_ADMIN_ACCOUNT = 'uid=admin,ou=people,dc=example,dc=com'
 """
-Admin LDAP account used for searching. If not set the authenticating
+Admin LDAP account used for searching. If not set, the authenticating
 user account will be used.
 """
 
@@ -62,15 +62,15 @@ user account will be used.
 """Admin LDAP account password."""
 
 LDAPCLIENT_SEARCH_BASE = 'dc=example,dc=com'
-"""Base for binding to LDAP."""
+"""Base for binding to LDAP. Your application needs to override this."""
 
 LDAPCLIENT_BIND_BASE = 'ou=people,dc=example,dc=com'
-"""Base for binding to LDAP."""
+"""Base for binding to LDAP. Your application needs to override this."""
 
 LDAPCLIENT_USERNAME_ATTRIBUTE = 'uid'
 """
 Username LDAP attribute.
-Appended to `LDAPCLIENT_BIND_BASE` with the username from the log-in form
+Prepended to `LDAPCLIENT_BIND_BASE` with the username from the log-in form
 for binding. For example:
 
     uid=FORM-USERNAME,ou=people,dc=example,dc=com

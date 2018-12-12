@@ -41,18 +41,23 @@ def test_init():
     ext.init_app(app)
     assert 'invenio-ldapclient' in app.extensions
     assert app.config['LDAPCLIENT_AUTHENTICATION'] is True
+    assert app.config['LDAPCLIENT_FIND_BY_EMAIL'] is True
     assert app.config['LDAPCLIENT_AUTO_REGISTRATION'] is True
     assert app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION'] is True
     assert app.config['LDAPCLIENT_LOGIN_USER_TEMPLATE'] == \
         'invenio_ldapclient/login_user.html'
     assert app.config['LDAPCLIENT_USERNAME_PLACEHOLDER'] == 'Username'
+    assert app.config['LDAPCLIENT_SERVER_HOSTNAME'] == 'example.com'
     assert app.config['LDAPCLIENT_SERVER_PORT'] == 389
     assert app.config['LDAPCLIENT_USE_SSL'] is False
     assert app.config['LDAPCLIENT_TLS'] is None
     assert app.config['LDAPCLIENT_CUSTOM_CONNECTION'] is None
+    assert app.config['LDAPCLIENT_SEARCH_BASE'] == 'dc=example,dc=com'
+    assert app.config['LDAPCLIENT_BIND_BASE'] == 'ou=people,dc=example,dc=com'
     assert app.config['LDAPCLIENT_USERNAME_ATTRIBUTE'] == 'uid'
     assert app.config['LDAPCLIENT_EMAIL_ATTRIBUTE'] == 'mail'
     assert app.config['LDAPCLIENT_FULL_NAME_ATTRIBUTE'] == 'displayName'
+    assert app.config['LDAPCLIENT_SEARCH_ATTRIBUTES'] is None
     assert app.config['SECURITY_LOGIN_USER_TEMPLATE'] == \
         app.config['LDAPCLIENT_LOGIN_USER_TEMPLATE']
 
@@ -72,14 +77,13 @@ def test_get_ldap_login(app):
     app.config['LDAPCLIENT_EXCLUSIVE_AUTHENTICATION'] = True
     app.config['LDAPCLIENT_USERNAME_PLACEHOLDER'] = 'Da User'
     app.config['COVER_TEMPLATE'] = 'login.html'
-
     app.jinja_loader.searchpath.append('tests/templates')
     app.jinja_loader.searchpath.append(
         invenio_accounts.__path__[0] + '/templates'
     )
     app.extensions['security'] = Mock()
-
     InvenioLDAPClient(app)
+
     response = app.test_client().get("/ldap-login")
 
     assert response.status_code == 200
@@ -93,6 +97,7 @@ def test_view_ldap_conn_returns_False(app):
     InvenioLDAPClient(app)
     app.config['SECURITY_POST_LOGIN_VIEW'] = '/abc'
     form = Mock()
+
     with patch(
         'invenio_ldapclient.views.login_form_factory',
         autospec=True, return_value=Mock(return_value=form)
@@ -105,17 +110,16 @@ def test_view_ldap_conn_returns_False(app):
                 "/ldap-login",
                 data=dict(username='bad', password='bad')
             )
+
     form_factory_mock.assert_called_once_with(app)
     ldap_conn_mock.assert_called_once_with(form)
-
     assert app.config['SECURITY_CONFIRMABLE'] is False
     assert app.config['SECURITY_RECOVERABLE'] is False
     assert app.config['SECURITY_REGISTERABLE'] is False
     assert app.config['SECURITY_CHANGEABLE'] is False
     assert app.config['USERPROFILES_EMAIL_ENABLED'] is False
     assert app.view_functions['security.login'] == \
-        invenio_ldapclient.views.ldap_login_form
-
+        invenio_ldapclient.views.ldap_login
     assert res.status_code == 302
     assert res.location == 'http://localhost/abc'
 
@@ -127,38 +131,35 @@ def test_view_ldap_conn_returns_True(app):
     app.extensions['security'] = Mock()
     InvenioLDAPClient(app)
     app.config['SECURITY_POST_LOGIN_VIEW'] = '/abc'
-
+    app.config['WTF_CSRF_ENABLED'] = False
     ldap_conn = Mock(bind=lambda: True, unbind=lambda: True)
     user = Mock()
-    with patch(
-        'invenio_ldapclient.views._ldap_connection',
-        autospec=True, return_value=ldap_conn
-    ) as ldap_conn_mock:
-        with patch(
-            'invenio_ldapclient.views._find_or_register_user',
-            autospec=True, return_value=user
-        ) as find_register_mock:
-            with patch(
-                'invenio_ldapclient.views.after_this_request',
-                autospec=True
-            ) as after_request_mock:
-                res = app.test_client().post(
-                    "/ldap-login",
-                    data=dict(username='itsame', password='good')
-                )
-    lform = ldap_conn_mock.call_args[0][0]
-    assert lform.username.data == 'itsame'
-    assert lform.password.data == 'good'
-    assert ldap_conn_mock.called is True
-    find_register_mock.assert_called_once_with(ldap_conn, 'itsame')
-    after_request_mock.assert_called_once_with(
-        invenio_ldapclient.views._commit
-    )
 
-    assert app.view_functions['security.login'] == \
-        invenio_ldapclient.views.ldap_login_form
-    assert res.status_code == 302
-    assert res.location == 'http://localhost/abc'
+    @patch('invenio_ldapclient.views.after_this_request', autospec=True)
+    @patch('invenio_ldapclient.views._find_or_register_user', autospec=True,
+           return_value=user)
+    @patch('invenio_ldapclient.views._ldap_connection', autospec=True,
+           return_value=ldap_conn)
+    def patched_test(ldap_conn_mock, find_register_mock, after_request_mock):
+        res = app.test_client().post(
+            "/ldap-login",
+            data=dict(username='itsame', password='good')
+        )
+
+        lform = ldap_conn_mock.call_args[0][0]
+        assert lform.username.data == 'itsame'
+        assert lform.password.data == 'good'
+        assert ldap_conn_mock.called is True
+        find_register_mock.assert_called_once_with(ldap_conn, 'itsame')
+        after_request_mock.assert_called_once_with(
+            invenio_ldapclient.views._commit
+        )
+        assert app.view_functions['security.login'] == \
+            invenio_ldapclient.views.ldap_login
+        assert res.status_code == 302
+        assert res.location == 'http://localhost/abc'
+
+    patched_test()
 
 
 def test_view__ldap_connection(app):
@@ -414,7 +415,7 @@ def test_view__search_ldap(app):
         attributes='*'
     )
 
-    # LDAPCLIENT_SEARCH_ATTRIBUTES is not set
+    # LDAPCLIENT_SEARCH_ATTRIBUTES is set
     app.config['LDAPCLIENT_SEARCH_ATTRIBUTES'] = ['abc', 'bcd']
     conn_mock = Mock()
     assert subject(conn_mock, 'itsame') is None
@@ -440,25 +441,20 @@ def test_view__register_or_update_user(app):
 
     # New user
     up_mock = MagicMock(autospec=UserProfile)
-    with patch(
-        'invenio_ldapclient.views.UserProfile', lambda user_id: up_mock
-    ):
+    with patch('invenio_ldapclient.views.UserProfile', lambda user_id: up_mock):  # noqa
         user_mock = Mock(get_id=lambda: '666')
-        with patch('invenio_ldapclient.views._datastore') as cu_patch:
-            with patch(
-                'invenio_ldapclient.views.User',
-                Mock(
-                    query=Mock(
-                        filter_by=lambda email: Mock(
-                            one_or_none=lambda: user_mock
-                        )
-                    )
+        user_class_mock = Mock(
+            query=Mock(
+                filter_by=lambda email: Mock(
+                    one_or_none=lambda: user_mock
                 )
-            ):
-                with patch(
-                    'invenio_ldapclient.views.db.session.add'
-                ) as session_patch:
+            )
+        )
+        with patch('invenio_ldapclient.views._datastore') as cu_patch:
+            with patch('invenio_ldapclient.views.User', user_class_mock):
+                with patch('invenio_ldapclient.views.db.session.add') as session_patch:  # noqa
                     assert subject(entries) == user_mock
+
     assert up_mock.username == 'itsame'
     assert up_mock.full_name == 'Itsa Me'
     cu_patch.create_user.assert_called_once_with(

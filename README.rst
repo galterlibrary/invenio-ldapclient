@@ -30,3 +30,10 @@ TODO: Please provide feature overview of module
 
 Further documentation is available on
 https://invenio-ldapclient.readthedocs.io/
+
+
+Developing
+==========
+
+See the `CONTRIBUTING.rst` file for all the details. This includes the
+instructions to create the environment and run the tests.
