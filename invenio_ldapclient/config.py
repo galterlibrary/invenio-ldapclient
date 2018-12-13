@@ -5,7 +5,19 @@
 # Invenio-LDAPClient is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-"""Invenio v3 LDAP client for authentication and user attributes population."""
+"""Invenio v3 LDAP client for authentication and user attributes population.
+
+In your instance's ``config.py`` or via other means, you MUST override the
+following configuration:
+
+.. code-block:: python
+
+    LDAPCLIENT_SERVER_HOSTNAME = '<your ldap hostname>'
+    LDAPCLIENT_SEARCH_BASE = '<your ldap search base>'
+    LDAPCLIENT_BIND_BASE = '<your base binding to LDAP>'
+
+Below is a list of all configuration variables:
+"""
 
 LDAPCLIENT_AUTHENTICATION = True
 """Use LDAP as an authentication method without overriding the default."""
@@ -29,7 +41,7 @@ LDAPCLIENT_USERNAME_PLACEHOLDER = 'Username'
 """Placeholder for the login form username field."""
 
 LDAPCLIENT_SERVER_HOSTNAME = 'example.com'
-"""LDAP server hostname. Your application needs to override this."""
+"""LDAP server hostname. Your application MUST override this."""
 
 LDAPCLIENT_SERVER_PORT = 389
 """LDAP server port."""
@@ -43,11 +55,15 @@ LDAPCLIENT_TLS = None
 LDAPCLIENT_CUSTOM_CONNECTION = None
 """
 Your own lambda for ldap3's Connection. If you need a custom connection
-pass it as a lambda that takes a username and a password as the arguments
-and returns an initialized connection.
+pass it as a lambda that takes a username and a password and returns an
+initialized Connection.
 
-for example:
-    LDAPCLIENT_CUSTOM_CONNECTION = lambda user, pass: Connection(...)
+For example:
+
+.. code-block:: python
+
+    LDAPCLIENT_CUSTOM_CONNECTION = lambda user, password: Connection(...)
+
 """
 
 # TODO later
@@ -62,18 +78,18 @@ user account will be used.
 """Admin LDAP account password."""
 
 LDAPCLIENT_SEARCH_BASE = 'dc=example,dc=com'
-"""Base for binding to LDAP. Your application needs to override this."""
+"""Base for binding to LDAP. Your application MUST override this."""
 
 LDAPCLIENT_BIND_BASE = 'ou=people,dc=example,dc=com'
-"""Base for binding to LDAP. Your application needs to override this."""
+"""Base for binding to LDAP. Your application MUST override this."""
 
 LDAPCLIENT_USERNAME_ATTRIBUTE = 'uid'
 """
 Username LDAP attribute.
-Prepended to `LDAPCLIENT_BIND_BASE` with the username from the log-in form
-for binding. For example:
+Prepended to ``LDAPCLIENT_BIND_BASE`` with the username from the log in form
+for binding, resulting in:
 
-    uid=FORM-USERNAME,ou=people,dc=example,dc=com
+    ``uid=FORM-USERNAME,ou=people,dc=example,dc=com``
 """
 
 LDAPCLIENT_EMAIL_ATTRIBUTE = 'mail'
@@ -83,4 +99,4 @@ LDAPCLIENT_FULL_NAME_ATTRIBUTE = 'displayName'
 """Full name LDAP attribute."""
 
 LDAPCLIENT_SEARCH_ATTRIBUTES = None
-"""List of attributes to fetch from LDAP. Defaults to '*'."""
+"""List of attributes to fetch from LDAP. Defaults to all of them (``'*'``)."""

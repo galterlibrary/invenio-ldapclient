@@ -1,8 +1,10 @@
 Installation
 ============
 
-Invenio-LDAPClient is on PyPI so all you need is:
+Invenio-LDAPClient is on GitHub
 
 .. code-block:: console
 
-   $ pip install invenio-ldapclient
+   $ pipenv install git+ssh://git@github.com/galterlibrary/invenio-ldapclient.git#egg=invenio-ldapclient
+
+Eventually it will be on PyPI!

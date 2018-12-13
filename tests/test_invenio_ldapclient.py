@@ -91,28 +91,27 @@ def test_get_ldap_login(app):
     assert 'placeholder="Da User"' in html_text
 
 
-def test_view_ldap_conn_returns_False(app):
+def test_view_for_ldap_connection_returns_False_flashes_error(app):
     """Test view when there's something wrong with LDAP connection."""
     app.extensions['security'] = Mock()
-    InvenioLDAPClient(app)
+    app.config['COVER_TEMPLATE'] = 'login.html'
     app.config['SECURITY_POST_LOGIN_VIEW'] = '/abc'
-    form = Mock()
+    app.config['WTF_CSRF_ENABLED'] = False
+    InvenioLDAPClient(app)
+    app.jinja_loader.searchpath.append('tests/templates')
+    app.jinja_loader.searchpath.append(
+        invenio_accounts.__path__[0] + '/templates'
+    )
 
-    with patch(
-        'invenio_ldapclient.views.login_form_factory',
-        autospec=True, return_value=Mock(return_value=form)
-    ) as form_factory_mock:
-        with patch(
-            'invenio_ldapclient.views._ldap_connection',
-            autospec=True, return_value=False
-        ) as ldap_conn_mock:
-            res = app.test_client().post(
-                "/ldap-login",
-                data=dict(username='bad', password='bad')
-            )
+    with patch('invenio_ldapclient.views._ldap_connection',
+               autospec=True, return_value=False) as ldap_conn_mock:
+        response = app.test_client().post(
+            "/ldap-login",
+            data=dict(username='bad', password='bad')
+        )
+        html_text = response.get_data(as_text=True)
 
-    form_factory_mock.assert_called_once_with(app)
-    ldap_conn_mock.assert_called_once_with(form)
+    ldap_conn_mock.assert_called_once()
     assert app.config['SECURITY_CONFIRMABLE'] is False
     assert app.config['SECURITY_RECOVERABLE'] is False
     assert app.config['SECURITY_REGISTERABLE'] is False
@@ -120,13 +119,14 @@ def test_view_ldap_conn_returns_False(app):
     assert app.config['USERPROFILES_EMAIL_ENABLED'] is False
     assert app.view_functions['security.login'] == \
         invenio_ldapclient.views.ldap_login
-    assert res.status_code == 302
-    assert res.location == 'http://localhost/abc'
+    assert (
+        "We couldn&#39;t log you in, please check your password." in html_text
+    )
 
 
 @patch('invenio_ldapclient.views.login_user', lambda user, remember: True)
 @patch('invenio_ldapclient.views.db.session.commit', lambda: True)
-def test_view_ldap_conn_returns_True(app):
+def test_view_ldap_connection_returns_True(app):
     """Test view when LDAP connection is A-OK."""
     app.extensions['security'] = Mock()
     InvenioLDAPClient(app)
@@ -511,3 +511,32 @@ def test__commit(app):
     with patch('invenio_ldapclient.views._datastore') as datastore_patch:
         assert invenio_ldapclient.views._commit() is None
         datastore_patch.commit.assert_called_once_with()
+
+
+@pytest.mark.parametrize('query_parameters, redirect_to', [
+    ('?next=/abc', '/abc'),
+    ('', '/'),
+    ('?next=http://malicious.dangerous', '/'),
+    ('?next=%2Fdeposit%2Fnew', '/deposit/new')])
+def test_redirect_to_next(query_parameters, redirect_to, app):
+    """Test view when LDAP connection is A-OK."""
+    app.extensions['security'] = Mock()
+    app.config['SECURITY_POST_LOGIN_VIEW'] = '/'
+    app.config['WTF_CSRF_ENABLED'] = False
+    InvenioLDAPClient(app)
+
+    @patch('invenio_ldapclient.views.db.session.commit', lambda: True)
+    @patch('invenio_ldapclient.views.login_user', lambda user, remember: True)
+    @patch('invenio_ldapclient.views._find_or_register_user', autospec=True)
+    @patch('invenio_ldapclient.views.after_this_request', autospec=True)
+    @patch('invenio_ldapclient.views._ldap_connection', autospec=True)
+    def assert_redirect(a, b, c):
+        response = app.test_client().post(
+            "/ldap-login" + query_parameters,
+            data=dict(username='itsame', password='good')
+        )
+
+        assert response.status_code == 302
+        assert response.location == 'http://localhost' + redirect_to
+
+    assert_redirect()

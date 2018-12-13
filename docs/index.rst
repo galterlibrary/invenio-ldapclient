@@ -3,8 +3,19 @@
     Invenio-LDAPClient is free software; you can redistribute it and/or modify it
     under the terms of the MIT License; see LICENSE file for more details.
 
+====================
+ Invenio-LDAPClient
+====================
 
-.. include:: ../README.rst
+.. image:: https://img.shields.io/github/license/galterlibrary/invenio-ldapclient.svg
+        :target: https://github.com/galterlibrary/invenio-ldapclient/blob/master/LICENSE
+
+Invenio v3 LDAP client for authentication and user attributes population.
+
+This module allows users to sign in to your Invenio instance via your
+organization's Lightweight Directory Access Protocol (LDAP). It retrieves
+attributes such as email and name via this connection.
+
 
 User's Guide
 ------------
@@ -17,7 +28,6 @@ Invenio-LDAPClient.
 
    installation
    configuration
-   usage
    examplesapp
 
 

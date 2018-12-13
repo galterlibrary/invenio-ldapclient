@@ -1,4 +1,4 @@
-"""Invenio module that adds more fun to the platform."""
+"""Invenio-LDAPClient login view."""
 
 from __future__ import absolute_import, print_function
 
@@ -6,7 +6,7 @@ import uuid
 
 from flask import Blueprint, after_this_request
 from flask import current_app as app
-from flask import flash, redirect, render_template
+from flask import flash, redirect, render_template, request
 from flask_security import login_user
 from invenio_accounts.models import User
 from invenio_db import db
@@ -157,15 +157,22 @@ def ldap_login():
             after_this_request(_commit)
             user = _find_or_register_user(connection, form.username.data)
 
-            if not user or not login_user(user, remember=False):
+            if user and login_user(user, remember=False):
+                next_page = request.args.get('next')
+
+                # Only allow relative URL for security
+                if not next_page or next_page.startswith('http'):
+                    next_page = app.config['SECURITY_POST_LOGIN_VIEW']
+
+                connection.unbind()
+                db.session.commit()
+                return redirect(next_page)
+            else:
+                connection.unbind()
                 flash("We couldn't log you in, please contact your administrator.")  # noqa
 
-            connection.unbind()
-            db.session.commit()
         else:
             flash("We couldn't log you in, please check your password.")
-
-        return redirect(app.config['SECURITY_POST_LOGIN_VIEW'])
 
     return render_template(
         app.config['SECURITY_LOGIN_USER_TEMPLATE'],

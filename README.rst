@@ -7,30 +7,26 @@
  Invenio-LDAPClient
 ====================
 
-.. image:: https://img.shields.io/travis/galterlibrary/invenio-ldapclient.svg
-        :target: https://travis-ci.org/galterlibrary/invenio-ldapclient
+.. .. image:: https://img.shields.io/travis/galterlibrary/invenio-ldapclient.svg
+..         :target: https://travis-ci.org/galterlibrary/invenio-ldapclient
 
-.. image:: https://img.shields.io/coveralls/galterlibrary/invenio-ldapclient.svg
-        :target: https://coveralls.io/r/galterlibrary/invenio-ldapclient
+.. .. image:: https://img.shields.io/coveralls/galterlibrary/invenio-ldapclient.svg
+..         :target: https://coveralls.io/r/galterlibrary/invenio-ldapclient
 
-.. image:: https://img.shields.io/github/tag/galterlibrary/invenio-ldapclient.svg
-        :target: https://github.com/galterlibrary/invenio-ldapclient/releases
+.. .. image:: https://img.shields.io/github/tag/galterlibrary/invenio-ldapclient.svg
+..         :target: https://github.com/galterlibrary/invenio-ldapclient/releases
 
-.. image:: https://img.shields.io/pypi/dm/invenio-ldapclient.svg
-        :target: https://pypi.python.org/pypi/invenio-ldapclient
+.. .. image:: https://img.shields.io/pypi/dm/invenio-ldapclient.svg
+..         :target: https://pypi.python.org/pypi/invenio-ldapclient
 
 .. image:: https://img.shields.io/github/license/galterlibrary/invenio-ldapclient.svg
         :target: https://github.com/galterlibrary/invenio-ldapclient/blob/master/LICENSE
 
 Invenio v3 LDAP client for authentication and user attributes population.
 
-*This is an experimental developer preview release.*
-
-TODO: Please provide feature overview of module
-
-Further documentation is available on
-https://invenio-ldapclient.readthedocs.io/
-
+This module allows users to sign in to your Invenio instance via your
+organization's Lightweight Directory Access Protocol (LDAP). It retrieves
+attributes such as email and name via this connection.
 
 Developing
 ==========

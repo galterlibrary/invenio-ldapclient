@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+{# -*- coding: utf-8 -*-
 
   This file is part of Invenio.
   Copyright (C) 2015-2018 CERN.
@@ -12,6 +12,12 @@
     <meta charset="utf-8" />
   </head>
   <body>
+    {%- for msg in get_flashed_messages() %}
+    <div class="container">
+      <a class="close" data-dismiss="alert" href="#">&times;</a>
+        {{ msg }}
+    </div>
+    {%- endfor %}
     {%- block panel %}{%- endblock panel %}
   </body>
 </html>
