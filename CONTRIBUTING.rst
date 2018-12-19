@@ -35,7 +35,8 @@ Write Documentation
 
 Invenio-LDAPClient could always use more documentation, whether as part of the
 official Invenio-LDAPClient docs, in docstrings, or even on the web in blog posts,
-articles, and such.
+articles, and such. Follow the "Get Started!" section below and running step
+5. will generate the documentation.
 
 Submit Feedback
 ~~~~~~~~~~~~~~~

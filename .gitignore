@@ -58,7 +58,10 @@ docs/_build/
 # PyBuilder
 target/
 
-# Vim swapfiles
-.*.sw?
-
 .pytest_cache
+
+# Editors
+## Vim swapfiles
+.*.sw?
+## Sublime-Text
+*.sublime-*
